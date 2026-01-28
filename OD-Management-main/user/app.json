@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Acadify",
+    "slug": "user",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logoo.jpg",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logoo.jpg",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.hprasath935.user",
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/logoo.jpg"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logoo.jpg",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "e483afdb-f033-4a49-aca6-92fb36068913"
+      }
+    }
+  }
+}

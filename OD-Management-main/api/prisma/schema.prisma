@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  TUTOR
+  YEAR_INCHARGE
+  HOD
+  LAB_INCHARGE
+}
+
+enum ODStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ODCategory {
+  PROJECT
+  SIH
+  SYMPOSIUM
+  OTHER
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RequestType {
+  OD
+  LEAVE
+}
+
+// Tables
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          UserRole
+  image         String?
+  phone         String?   @unique
+  pushToken     String?
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  teachers      Teacher?
+  students      Student?
+  requests      Request[] @relation("RequestedBy")
+
+  approvalSteps ApprovalStep[]
+  Session       Session[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  token     String   @unique
+  expiresAt DateTime
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  token     String   @unique
+  expiresAt DateTime
+}
+
+model OTP {
+  id         String    @id @default(uuid())
+  email      String    @unique
+  otp        String
+  expiresAt  DateTime
+  verifiedAt DateTime?
+}
+
+model Department {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  code     String    @unique
+  teachers Teacher[]
+  groups   Group[]
+  labs     Lab[]
+}
+
+model Teacher {
+  id                  String               @id @default(uuid())
+  userId              String               @unique
+  departmentId        String
+  user                User                 @relation(fields: [userId], references: [id])
+  department          Department           @relation(fields: [departmentId], references: [id])
+  labs                Lab[]
+  groupApprovers      GroupApprover[]
+  teacherDesignations TeacherDesignation[]
+}
+
+model Group {
+  id             String          @id @default(uuid())
+  name           String
+  section        String
+  batch          String
+  departmentId   String
+  department     Department      @relation(fields: [departmentId], references: [id])
+  students       Student[]
+  approvalSteps  ApprovalStep[]
+  groupApprovers GroupApprover[]
+  Approval       Approval[]
+}
+
+model Student {
+  id                   String           @id @default(uuid())
+  rollNo               String
+  regNo                String           @unique
+  attendancePercentage Float?
+  numberOfOD           Int              @default(0)
+  userId               String           @unique
+  groupId              String
+  departmentId         String
+  user                 User             @relation(fields: [userId], references: [id])
+  group                Group            @relation(fields: [groupId], references: [id])
+  requests             RequestStudent[]
+}
+
+model Lab {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+  inchargeId   String
+  department   Department @relation(fields: [departmentId], references: [id])
+  incharge     Teacher    @relation(fields: [inchargeId], references: [id])
+  Request      Request[]
+}
+
+// Request and Approval Flow
+model FlowTemplate {
+  id       String     @id @default(uuid())
+  name     String     @unique // e.g., "NoLabFlow", "LabFlow"
+  steps    FlowStep[]
+  requests Request[]
+}
+
+model FlowStep {
+  id             String       @id @default(uuid())
+  sequence       Int
+  role           Role // Defines which role approves this step
+  flowTemplateId String
+  flowTemplate   FlowTemplate @relation(fields: [flowTemplateId], references: [id])
+}
+
+model Request {
+  id            String      @id @default(uuid())
+  type          RequestType
+  category      ODCategory?
+  needsLab      Boolean     @default(false)
+  reason        String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime
+  proofOfOD     String?
+  // studentId      String
+  labId         String?
+  requestedById String
+  status        ApprovalStatus    @default(PENDING)
+  // student        Student       @relation(fields: [studentId], references: [id])
+  lab            Lab?             @relation(fields: [labId], references: [id])
+  requestedBy    User             @relation("RequestedBy", fields: [requestedById], references: [id])
+  Approvals      Approval[]
+  FlowTemplate   FlowTemplate?    @relation(fields: [flowTemplateId], references: [id])
+  students       RequestStudent[]
+  flowTemplateId String?
+  // 
+}
+
+model RequestStudent {
+  id        String  @id @default(uuid())
+  requestId String
+  studentId String
+  request   Request @relation(fields: [requestId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id])
+
+  @@unique([requestId, studentId])
+}
+
+model Approval {
+  id               String         @id @default(uuid())
+  status           ApprovalStatus @default(PENDING)
+  currentStepIndex Int            @default(0)
+  requestId        String         
+  groupId          String
+
+  group            Group          @relation(fields: [groupId], references: [id])
+  request          Request        @relation(fields: [requestId], references: [id])
+  approvalSteps    ApprovalStep[]
+}
+
+model ApprovalStep {
+  id         String         @id @default(uuid())
+  sequence   Int
+  status     ApprovalStatus @default(PENDING)
+  comments   String?
+  approvedAt DateTime?
+  approvalId String
+  groupId    String
+  approval   Approval       @relation(fields: [approvalId], references: [id])
+  group      Group          @relation(fields: [groupId], references: [id])
+  User       User?          @relation(fields: [userId], references: [id])
+  userId     String?
+}
+
+model Dropdown {
+  id    String @id @default(uuid())
+  type  String
+  value String
+  label String
+}
+
+model Designation {
+  id                  String               @id @default(uuid())
+  role                Role
+  description         String?
+  teacherDesignations TeacherDesignation[]
+}
+
+model TeacherDesignation {
+  id            String      @id @default(uuid())
+  teacherId     String
+  designationId String
+  teacher       Teacher     @relation(fields: [teacherId], references: [id])
+  designation   Designation @relation(fields: [designationId], references: [id])
+
+  @@unique([teacherId, designationId])
+}
+
+model GroupApprover {
+  id        String  @id @default(uuid())
+  groupId   String
+  teacherId String
+  role      Role
+  group     Group   @relation(fields: [groupId], references: [id])
+  teacher   Teacher @relation(fields: [teacherId], references: [id])
+}
